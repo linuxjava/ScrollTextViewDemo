@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <declare-styleable name="TextSwicherStock">
+        <attr name="textColor" format="color" />
+        <attr name="textSize" format="dimension" />
+        <attr name="textStyle">
+            <flag name="normal" value="0x00000000" />
+            <flag name="bold" value="0x00000001" />
+            <flag name="italic" value="0x00000002" />
+        </attr>
+    </declare-styleable>
+
+</resources>

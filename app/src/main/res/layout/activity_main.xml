@@ -13,5 +13,6 @@
     <com.wyx.scrolltextview.ScrollTextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        ScrollTextView:textColor="@color/colorAccent"
         ScrollTextView:text="Hello World!" />
 </RelativeLayout>

@@ -61,7 +61,7 @@ public class ScrollTextView extends View {
         float textSize = array.getDimension(R.styleable.ScrollTextView_textSize, 136);
         int textStyle = array.getInt(R.styleable.ScrollTextView_textStyle, 0);
 
-        setTextWithAnim(array.getString(R.styleable.ScrollTextView_text));
+        setText(array.getString(R.styleable.ScrollTextView_text));
         paint.setColor(textColor);
         paint.setTextSize(textSize);
         paint.setTypeface(Typeface.create(Typeface.DEFAULT, textStyle));
@@ -72,7 +72,7 @@ public class ScrollTextView extends View {
         diotWidth = (int) paint.measureText(".");
         charWidth = (int) paint.measureText("1");
         chineseWidth = (int) paint.measureText("日");
-
+        curCharWidth=nextCharWidth=charWidth;
     }
 
 
@@ -139,7 +139,6 @@ public class ScrollTextView extends View {
     public void draw(Canvas canvas) {
         super.draw(canvas);
         if (changeNumIndex.size() == 0) {
-            compareString();
             resize();
         }
         canvas.save();
@@ -222,11 +221,8 @@ public class ScrollTextView extends View {
 
     public void setTextWithAnim(String nextText) {
         this.nextText = nextText;
-        if (isChineseChar(nextText)) {
-            nextCharWidth = chineseWidth;
-        } else {
-            nextCharWidth = charWidth;
-        }
+        compareString();
+        setCharWidth(nextText);
         resize();
         startAnimation();
     }
@@ -234,21 +230,21 @@ public class ScrollTextView extends View {
     public void setText(String nextText) {
         this.currentText = nextText;
         this.nextText = "";
+        setCharWidth(nextText);
+        resize();
+        invalidate();
+    }
+
+    private void setCharWidth(String nextText) {
         if (isChineseChar(nextText)) {
             nextCharWidth = chineseWidth;
         } else {
             nextCharWidth = charWidth;
         }
-        resize();
-        invalidate();
     }
 
 
     private void resize() {
-        resetPosition();
-    }
-
-    private void resetPosition() {
         curTextX = getWidth() / 2 - (currentText.length() * curCharWidth) / 2;
         nextTextX = getWidth() / 2 - (nextText.length() * nextCharWidth) / 2;
 
@@ -277,9 +273,8 @@ public class ScrollTextView extends View {
         offsetY = 0;
         changeNumIndex.clear();
         curCharWidth = nextCharWidth;
-// testFun();
         FrameAnimationController.removeAnimation();
-
+//        testFun();
     }
 
     private void testFun() {

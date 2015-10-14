@@ -6,65 +6,64 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.Typeface;
-import android.text.Layout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.View;
 
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by winney on 15/10/13.
  */
 
-public class TextSwitcherView extends View {
+public class ScrollTextView extends View {
     private String currentText = "-";
-    private String nextText = "-";
-    private static final int DEVIDER = 2;
+    private String nextText = "";
+    private static final int DEVIDER = 0;
 
     private boolean animating;
 
-    private TextPaint paint;
+    private final TextPaint paint;
 
-
-    private Rect curBound;
-    private Rect nextBound;
-    private Rect maxBound;
-
+    private final Rect maxBound;
 
     private int curTextX = 0;
     private int nextTextX = 0;
     private int textY = 0;
-    private Rect clipRect;
+    private final Rect clipRect;
 
     private float offsetY = 0;
     private final float VELOCITY = 80;
 
-    private ArrayList<Integer> changeNumIndex = new ArrayList<Integer>();
+    private final ArrayList<Integer> changeNumIndex = new ArrayList<Integer>();
 
-    int diotWidth = 0;
-    int charWidth = 0;
-    int minusWidth = 0;
+    private int diotWidth = 0;
+    private int charWidth = 0;
+    private int chineseWidth = 0;
 
-    public TextSwitcherView(Context context) {
+    private int curCharWidth = 0;
+    private int nextCharWidth = 0;
+
+    public ScrollTextView(Context context) {
         this(context, null);
     }
 
-    public TextSwitcherView(Context context, AttributeSet attrs, int defStyleAttr) {
+    public ScrollTextView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         paint = new TextPaint();
-        curBound = new Rect();
-        nextBound = new Rect();
         maxBound = new Rect();
         clipRect = new Rect();
 
-        TypedArray array = context.obtainStyledAttributes(attrs, R.styleable.TextSwicherStock);
-        int textColor = array.getColor(R.styleable.TextSwicherStock_textColor, Color.BLACK); // 提供默认值，放置未指定
-        float textSize = array.getDimension(R.styleable.TextSwicherStock_textSize, 136);
-        int textStyle = array.getInt(R.styleable.TextSwicherStock_textStyle, 0);
+        TypedArray array = context.obtainStyledAttributes(attrs, R.styleable.ScrollTextView);
+        int textColor = array.getColor(R.styleable.ScrollTextView_textColor, Color.BLACK); // 提供默认值，放置未指定
+        float textSize = array.getDimension(R.styleable.ScrollTextView_textSize, 136);
+        int textStyle = array.getInt(R.styleable.ScrollTextView_textStyle, 0);
+
+        setTextWithAnim(array.getString(R.styleable.ScrollTextView_text));
         paint.setColor(textColor);
         paint.setTextSize(textSize);
-//        paint.setTextLocale(Locale.CHINESE);
         paint.setTypeface(Typeface.create(Typeface.DEFAULT, textStyle));
         paint.setAntiAlias(true);
         array.recycle();
@@ -72,11 +71,12 @@ public class TextSwitcherView extends View {
 
         diotWidth = (int) paint.measureText(".");
         charWidth = (int) paint.measureText("1");
-        minusWidth = (int) paint.measureText("-");
+        chineseWidth = (int) paint.measureText("日");
 
     }
 
-    public TextSwitcherView(Context context, AttributeSet attrs) {
+
+    public ScrollTextView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
@@ -93,10 +93,12 @@ public class TextSwitcherView extends View {
         if (specMode == MeasureSpec.EXACTLY) {
             result = specSize;
         } else {
-            result = (int) Math.ceil(Layout.getDesiredWidth(getMeasureText(), paint));
-            if (getMeasureText().contains("-") || getMeasureText().contains("+")) {
-                result += charWidth - minusWidth;
+            if (isChineseChar(getMeasureText())) {
+                result = getMeasureText().length() * chineseWidth;
+            } else {
+                result = getMeasureText().length() * charWidth;
             }
+
             if (specMode == MeasureSpec.AT_MOST) {
                 result = Math.min(result, specSize);
             }
@@ -123,6 +125,15 @@ public class TextSwitcherView extends View {
         return result;
     }
 
+    public static boolean isChineseChar(String str) {
+        boolean temp = false;
+        Pattern p = Pattern.compile("[\u4e00-\u9fa5]");
+        Matcher m = p.matcher(str);
+        if (m.find()) {
+            temp = true;
+        }
+        return temp;
+    }
 
     @Override
     public void draw(Canvas canvas) {
@@ -142,13 +153,9 @@ public class TextSwitcherView extends View {
         paint.setColor(color);
     }
 
+
     private void drawOrginChar(Canvas canvas) {
-        int tmp = 0;
-        if (currentText.length() != 0) {
-            tmp = curBound.width() / currentText.length() + DEVIDER;
-        } else {
-            tmp = curBound.width() + DEVIDER;
-        }
+        int tmp = curCharWidth + DEVIDER;
         int correctValue = 0;
         int indexDiot = currentText.indexOf('.');
 
@@ -164,18 +171,8 @@ public class TextSwitcherView extends View {
     }
 
     private void drawSwitchChar(Canvas canvas) {
-        int curTX;
-        int nextTx;
-        if (nextText.length() != 0) {
-            nextTx = nextBound.width() / nextText.length() + DEVIDER;
-        } else {
-            nextTx = nextBound.width() + DEVIDER;
-        }
-        if (currentText.length() != 0) {
-            curTX = curBound.width() / currentText.length() + DEVIDER;
-        } else {
-            curTX = curBound.width() + DEVIDER;
-        }
+        int curTX = curCharWidth + DEVIDER;
+        int nextTx = nextCharWidth + DEVIDER;
         int correctValue = 0;
         int curCorrectValue = 0;
 
@@ -191,13 +188,13 @@ public class TextSwitcherView extends View {
             if (currentIndexDiot != -1 && curCorrectValue == 0 && index > currentIndexDiot) {
                 curCorrectValue = charWidth - diotWidth;
             }
-
             if (index < nextText.length()) {
-                canvas.drawText(nextText.charAt(index) + "", nextTextX + nextTx * index - correctValue, textY + nextBound.height() - offsetY, paint);
+                canvas.drawText(nextText.charAt(index) + "", nextTextX + nextTx * index - correctValue, textY + maxBound.height() - offsetY, paint);
             }
             if (index < currentText.length()) {
                 canvas.drawText(currentText.charAt(index) + "", curTextX + curTX * index - curCorrectValue, textY - offsetY, paint);
             }
+
         }
     }
 
@@ -223,31 +220,43 @@ public class TextSwitcherView extends View {
         return currentText;
     }
 
-    public void setText(String nextText) {
+    public void setTextWithAnim(String nextText) {
         this.nextText = nextText;
+        if (isChineseChar(nextText)) {
+            nextCharWidth = chineseWidth;
+        } else {
+            nextCharWidth = charWidth;
+        }
         resize();
         startAnimation();
     }
 
-    private void initSize() {
-        paint.getTextBounds(currentText, 0, currentText.length(), curBound);
-        resetPosition();
+    public void setText(String nextText) {
+        this.currentText = nextText;
+        this.nextText = "";
+        if (isChineseChar(nextText)) {
+            nextCharWidth = chineseWidth;
+        } else {
+            nextCharWidth = charWidth;
+        }
+        resize();
+        invalidate();
     }
+
 
     private void resize() {
         resetPosition();
     }
 
     private void resetPosition() {
-        paint.getTextBounds(currentText, 0, currentText.length(), curBound);
-        curTextX = getWidth() / 2 - curBound.width() / 2;
-        paint.getTextBounds(nextText, 0, nextText.length(), nextBound);
-        nextTextX = getWidth() / 2 - nextBound.width() / 2;
+        curTextX = getWidth() / 2 - (currentText.length() * curCharWidth) / 2;
+        nextTextX = getWidth() / 2 - (nextText.length() * nextCharWidth) / 2;
+
         paint.getTextBounds(getMeasureText(), 0, getMeasureText().length(), maxBound);
 
         textY = getHeight() / 2 + maxBound.height() / 2;
         clipRect.left = Math.min(curTextX, nextTextX);
-        clipRect.right = curTextX + maxBound.width() + DEVIDER * getMeasureText().length() + 10;
+        clipRect.right = curTextX + (DEVIDER + Math.max(curCharWidth, nextCharWidth)) * getMeasureText().length();
         clipRect.top = textY - maxBound.height();
         clipRect.bottom = textY + 10;
 
@@ -265,10 +274,10 @@ public class TextSwitcherView extends View {
     private void stopAnimation() {
         animating = false;
         currentText = nextText;
-//        curBound=nextBound;
         offsetY = 0;
         changeNumIndex.clear();
-        // testFun();
+        curCharWidth = nextCharWidth;
+// testFun();
         FrameAnimationController.removeAnimation();
 
     }
